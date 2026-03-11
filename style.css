@@ -702,7 +702,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ══ НОВЫЕ СТИЛИ: Итерация 1 ════════════════════════════════ */
 
-/* ── Track actions (download + share + like) ──────────────── */
+/* ── Track actions в списке треков ───────────────────────── */
 .track-actions {
   display: flex;
   align-items: center;
@@ -727,7 +727,15 @@ a { color: inherit; text-decoration: none; }
 .action-btn.downloaded svg { stroke: var(--accent); }
 .action-btn.downloading { cursor: default; opacity: 0.8; }
 
-/* ── Player-bar action buttons (desktop) ─────────────────── */
+/* ── Кнопки в player-track (♡ + share + download) ────────── */
+.player-track-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+/* ── Player action buttons (desktop + mobile) ─────────────── */
 .player-action-btn {
   color: var(--text3);
   padding: 6px;
@@ -736,30 +744,28 @@ a { color: inherit; text-decoration: none; }
 .player-action-btn:hover { color: var(--accent); }
 #playerDownloadBtn.downloaded svg { stroke: var(--accent); }
 
-/* ── mobile-track-title: скрыт везде кроме мобайла ──────── */
+/* mobile-track-title скрыт везде */
 .mobile-track-title { display: none; }
 
 /* ══ МОБИЛЬНЫЙ ПЛЕЕР ≤ 599px ════════════════════════════════
-   Строка 1 (row-info):  ♪  Название — Артист  ♡  ↓  ↗
-   Строка 2 (row-ctrl):  ⇄  |◄  ▶  ►|  ↺  ——  0:00 ━━ 2:47
+   Строка 1: ♪  Название — Артист  [♡ ↗ ↓]
+   Строка 2: ⇄  |◄  ▶  ►|  ↺  +  0:00 ━━ 2:47
    ═══════════════════════════════════════════════════════════ */
 @media (max-width: 599px) {
 
-  /* Плеер-бар: два ряда */
   .player-bar {
     height: auto;
     flex-direction: column;
     align-items: stretch;
-    padding: 8px 14px 8px;
-    gap: 2px;
+    padding: 8px 12px 6px;
+    gap: 4px;
   }
 
-  /* ─── Ряд 1: арт + мета + кнопки ──────────────────────── */
+  /* ── Строка 1: трек + кнопки ──────────────────────────── */
   .player-track {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
     flex: none;
   }
@@ -774,37 +780,33 @@ a { color: inherit; text-decoration: none; }
   .player-meta {
     flex: 1;
     min-width: 0;
-    text-align: left;
   }
 
   .player-title  { font-size: 12px; }
   .player-artist { font-size: 10px; }
 
-  /* Лайк — остаётся в player-track, flex-shrink 0 */
-  .heart-btn { font-size: 17px; padding: 4px; flex-shrink: 0; }
-
-  /* Share и Download перемещаем в ряд 1 через order:
-     player-right становится display:contents — дети
-     «вытекают» во flex player-bar. Затем order
-     прижимает их к player-track (order 0 по умолчанию). */
-  .player-right {
-    display: contents;
+  .player-track-actions {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
   }
-  .player-right .volume-slider,
-  .player-right > svg { display: none; }
 
+  .heart-btn { font-size: 17px; padding: 4px; }
+
+  /* Share + Download — в рамках .player-track-actions, уже на месте */
   #playerShareBtn,
   #playerDownloadBtn {
-    order: 0;   /* между player-track (order 0) и player-center (order 1) */
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    padding: 6px;
+    width: 30px;
+    height: 30px;
+    padding: 5px;
   }
 
-  /* ─── Ряд 2: controls + прогресс ──────────────────────── */
+  /* Громкость — скрываем */
+  .player-right { display: none; }
+
+  /* ── Строка 2: controls + прогресс, всё центрировано ───── */
   .player-center {
-    order: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -824,7 +826,6 @@ a { color: inherit; text-decoration: none; }
 
   .progress-area { width: 100%; }
 
-  /* mobile-track-title не нужен — мета видна в ряду 1 */
   .mobile-track-title { display: none !important; }
 }
 
