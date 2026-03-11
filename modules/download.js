@@ -114,32 +114,9 @@ async function findOnHitmotop(track, signal) {
   return matches[0][1];
 }
 
-// ── Умный fetch: прямой (hitmotop отдаёт с CORS) или через прокси ─
+// ── Всегда качаем через прокси (hitmotop и sunproxy.net оба без CORS) ──
 async function fetchBlobAuto(mp3Url, signal, onPercent) {
-  const isHitmotop = mp3Url.includes('hitmotop.com');
-
-  if (isHitmotop) {
-    // hitmotop раздаёт MP3 с CORS-заголовками — качаем напрямую
-    try {
-      return await fetchBlobDirect(mp3Url, signal, onPercent);
-    } catch (e) {
-      if (e.name === 'AbortError') throw e;
-      console.warn('[download] direct hitmotop failed, trying proxy:', e.message);
-      // Fallback через прокси
-      for (const proxy of PROXIES) {
-        try {
-          return await fetchBlobViaProxy(proxy, mp3Url, signal, onPercent);
-        } catch (pe) {
-          if (pe.name === 'AbortError') throw pe;
-          console.warn('[download] proxy fallback failed:', pe.message);
-        }
-      }
-      throw new Error('Не удалось скачать трек');
-    }
-  } else {
-    // sunproxy.net — только через прокси
-    return await fetchBlobViaProxies(mp3Url, signal, onPercent);
-  }
+  return await fetchBlobViaProxies(mp3Url, signal, onPercent);
 }
 
 async function fetchBlobViaProxies(mp3Url, signal, onPercent) {
@@ -154,13 +131,6 @@ async function fetchBlobViaProxies(mp3Url, signal, onPercent) {
     }
   }
   throw new Error('Все прокси недоступны: ' + (lastError?.message || ''));
-}
-
-// ── Прямой fetch с прогрессом ──────────────────────────────────
-async function fetchBlobDirect(url, signal, onPercent) {
-  const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  return await readBlobFromResponse(res, onPercent);
 }
 
 // ── Fetch через прокси с прогрессом ───────────────────────────
