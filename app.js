@@ -225,7 +225,20 @@ function handleDownload(track, btn) {
       updateDownloadButton(btn, 'downloaded');
       const pbBtn = document.getElementById('playerDownloadBtn');
       if (pbBtn && pbBtn.dataset.url === track.url) updateDownloadButton(pbBtn, 'downloaded');
-      showToast('✓ Трек сохранён офлайн');
+
+      // Автоматически добавляем в избранное при скачивании
+      const wasLiked = Liked.isLiked(track.url);
+      if (!wasLiked) {
+        Liked.add(track);
+        // Обновляем кнопку лайка в player-bar
+        updatePlayerBar({ track: Player.currentTrack?.url === track.url ? Player.currentTrack : track });
+        // Обновляем кнопку лайка в списке треков
+        document.querySelectorAll('.like-btn[data-url]').forEach(b => {
+          if (b.dataset.url === track.url) updateLikeButton(b, true);
+        });
+      }
+
+      showToast('✓ Трек сохранён и добавлен в избранное');
       refreshFavorites();
     },
     onError: (msg) => {
