@@ -1,10 +1,7 @@
 // ── download.js ───────────────────────────────────────────────
-// Fetch MP3 через прокси (обход CORS Safari), сохраняем в IndexedDB.
-
 import { fetchPage, parseMp3 } from './parser.js';
 import { Offline } from './storage.js';
 
-// Те же прокси что в parser.js — гарантируют работу в Safari
 const PROXIES = [
   'https://functions.yandexcloud.net/d4ebfvpcafvdghfva6fs?url=',
   'https://silent-boat-5c96.chatgptnik.workers.dev/?url=',
@@ -22,7 +19,7 @@ export const Download = {
     active.set(track.url, ctrl);
 
     try {
-      // Шаг 1: получаем MP3 URL (кешируем если уже играл)
+      // Шаг 1: получаем MP3 URL
       let mp3Url = track.mp3Url;
       if (!mp3Url) {
         onProgress?.({ phase: 'resolving', percent: 0 });
@@ -32,13 +29,19 @@ export const Download = {
         track.mp3Url = mp3Url;
       }
 
-      // Шаг 2: качаем бинарник через прокси (Safari CORS fix)
+      // Логируем домен для диагностики
+      try {
+        const mp3Host = new URL(mp3Url).hostname;
+        console.log('[download] MP3 hostname:', mp3Host);
+      } catch {}
+
+      // Шаг 2: качаем бинарник
       onProgress?.({ phase: 'downloading', percent: 0 });
-      const blob = await fetchBlobViaProxy(mp3Url, ctrl.signal, pct => {
+      const blob = await fetchBlobSafari(mp3Url, ctrl.signal, pct => {
         onProgress?.({ phase: 'downloading', percent: pct });
       });
 
-      // Шаг 3: сохраняем в IndexedDB
+      // Шаг 3: сохраняем
       onProgress?.({ phase: 'saving', percent: 100 });
       await Offline.save(track, blob);
 
@@ -57,51 +60,68 @@ export const Download = {
   },
 };
 
-// ── Fetch через прокси с прогрессом ───────────────────────────
-async function fetchBlobViaProxy(mp3Url, signal, onPercent) {
-  const encoded = encodeURIComponent(mp3Url);
-  let lastError;
+// ── Умный fetch: прямой → прокси fallback ─────────────────────
+// Сначала пробуем прямой fetch (работает в Яндекс, Chrome).
+// Если CORS-ошибка (Safari/iOS) — идём через прокси.
+async function fetchBlobSafari(mp3Url, signal, onPercent) {
+  // Попытка 1: прямой fetch
+  try {
+    const blob = await fetchBlobDirect(mp3Url, signal, onPercent);
+    console.log('[download] direct fetch OK');
+    return blob;
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    console.warn('[download] direct fetch failed, trying proxies:', e.message);
+  }
 
+  // Попытка 2: через каждый прокси
+  let lastError;
   for (const proxy of PROXIES) {
     try {
-      const res = await fetch(proxy + encoded, { signal });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-
-      // Прокси возвращает текст — проверяем что это не JSON-ошибка
-      const contentType = res.headers.get('Content-Type') || '';
-      if (contentType.includes('application/json')) {
-        const txt = await res.text();
-        throw new Error('Proxy error: ' + txt);
-      }
-
-      // Читаем с прогрессом
-      const contentLength = res.headers.get('Content-Length');
-      const total = contentLength ? parseInt(contentLength, 10) : 0;
-
-      const reader = res.body.getReader();
-      const chunks = [];
-      let received = 0;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        received += value.length;
-        if (total) onPercent(Math.round((received / total) * 100));
-      }
-
-      const all = new Uint8Array(received);
-      let offset = 0;
-      for (const chunk of chunks) { all.set(chunk, offset); offset += chunk.length; }
-
-      return new Blob([all], { type: 'audio/mpeg' });
-
+      const proxyUrl = proxy + encodeURIComponent(mp3Url);
+      console.log('[download] trying proxy:', proxy);
+      const blob = await fetchBlobDirect(proxyUrl, signal, onPercent);
+      console.log('[download] proxy OK:', proxy);
+      return blob;
     } catch (e) {
-      if (e.name === 'AbortError') throw e; // пробрасываем отмену сразу
+      if (e.name === 'AbortError') throw e;
       lastError = e;
-      console.warn('[download] proxy failed (' + proxy + '):', e.message);
+      console.warn('[download] proxy failed:', e.message);
     }
   }
 
-  throw new Error('Все прокси недоступны: ' + lastError?.message);
+  throw new Error('Не удалось скачать трек. ' + (lastError?.message || ''));
+}
+
+// ── Базовый fetch с прогрессом ─────────────────────────────────
+async function fetchBlobDirect(url, signal, onPercent) {
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+
+  // Прокси может вернуть JSON-ошибку
+  const ct = res.headers.get('Content-Type') || '';
+  if (ct.includes('application/json')) {
+    const txt = await res.text();
+    throw new Error('Proxy error: ' + txt.slice(0, 100));
+  }
+
+  const contentLength = res.headers.get('Content-Length');
+  const total = contentLength ? parseInt(contentLength, 10) : 0;
+
+  const reader = res.body.getReader();
+  const chunks = [];
+  let received = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    if (total) onPercent(Math.round((received / total) * 100));
+  }
+
+  const all = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) { all.set(chunk, offset); offset += chunk.length; }
+  return new Blob([all], { type: 'audio/mpeg' });
 }
