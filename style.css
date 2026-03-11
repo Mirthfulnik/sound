@@ -698,11 +698,7 @@ a { color: inherit; text-decoration: none; }
   }
 }
 
-/* Small phones: hide volume */
-@media (max-width: 400px) {
-  .player-right { display: none; }
-  .player-center { flex: 3; }
-}
+
 
 /* ══ НОВЫЕ СТИЛИ: Итерация 1 ════════════════════════════════ */
 
@@ -727,73 +723,116 @@ a { color: inherit; text-decoration: none; }
   transition: color 0.2s, background 0.2s;
   -webkit-tap-highlight-color: transparent;
 }
+.action-btn:hover { color: var(--text); background: var(--bg3); }
+.action-btn.downloaded svg { stroke: var(--accent); }
+.action-btn.downloading { cursor: default; opacity: 0.8; }
 
-.action-btn:hover {
-  color: var(--text);
-  background: var(--bg3);
-}
-
-.action-btn.downloaded svg {
-  stroke: var(--accent);
-}
-
-.action-btn.downloading {
-  cursor: default;
-  opacity: 0.8;
-}
-
-/* ── Mobile track title above controls ───────────────────── */
-.mobile-track-title {
-  display: none;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0 8px;
-  max-width: 100%;
-  margin-bottom: 2px;
-}
-
-@media (max-width: 500px) {
-  .mobile-track-title {
-    display: block;
-  }
-
-  /* Hide the separate player-track meta on very small screens to save space */
-  .player-track .player-meta {
-    display: none;
-  }
-
-  /* Also hide volume controls to save space — keep share/download */
-  .player-right .volume-slider,
-  .player-right > svg:last-of-type {
-    display: none;
-  }
-}
-
-/* ── Player-bar action buttons ───────────────────────────── */
+/* ── Player-bar action buttons (desktop) ─────────────────── */
 .player-action-btn {
   color: var(--text3);
+  padding: 6px;
   transition: color 0.2s;
 }
+.player-action-btn:hover { color: var(--accent); }
+#playerDownloadBtn.downloaded svg { stroke: var(--accent); }
 
-.player-action-btn:hover {
-  color: var(--accent);
-}
+/* ── mobile-track-title: скрыт везде кроме мобайла ──────── */
+.mobile-track-title { display: none; }
 
-.player-action-btn.downloaded svg,
-#playerDownloadBtn.downloaded svg {
-  stroke: var(--accent);
+/* ══ МОБИЛЬНЫЙ ПЛЕЕР ≤ 599px ════════════════════════════════
+   Строка 1 (row-info):  ♪  Название — Артист  ♡  ↓  ↗
+   Строка 2 (row-ctrl):  ⇄  |◄  ▶  ►|  ↺  ——  0:00 ━━ 2:47
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 599px) {
+
+  /* Плеер-бар: два ряда */
+  .player-bar {
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px 14px 8px;
+    gap: 2px;
+  }
+
+  /* ─── Ряд 1: арт + мета + кнопки ──────────────────────── */
+  .player-track {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    flex: none;
+  }
+
+  .player-art {
+    width: 34px;
+    height: 34px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .player-meta {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .player-title  { font-size: 12px; }
+  .player-artist { font-size: 10px; }
+
+  /* Лайк — остаётся в player-track, flex-shrink 0 */
+  .heart-btn { font-size: 17px; padding: 4px; flex-shrink: 0; }
+
+  /* Share и Download перемещаем в ряд 1 через order:
+     player-right становится display:contents — дети
+     «вытекают» во flex player-bar. Затем order
+     прижимает их к player-track (order 0 по умолчанию). */
+  .player-right {
+    display: contents;
+  }
+  .player-right .volume-slider,
+  .player-right > svg { display: none; }
+
+  #playerShareBtn,
+  #playerDownloadBtn {
+    order: 0;   /* между player-track (order 0) и player-center (order 1) */
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    padding: 6px;
+  }
+
+  /* ─── Ряд 2: controls + прогресс ──────────────────────── */
+  .player-center {
+    order: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    flex: none;
+  }
+
+  .player-controls {
+    justify-content: center;
+    gap: 0;
+    width: 100%;
+  }
+
+  .ctrl { width: 36px; height: 36px; }
+  .play-btn { width: 42px !important; height: 42px !important; }
+
+  .progress-area { width: 100%; }
+
+  /* mobile-track-title не нужен — мета видна в ряду 1 */
+  .mobile-track-title { display: none !important; }
 }
 
 /* ── Confirm dialog ──────────────────────────────────────── */
 .confirm-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0,0,0,0.72);
   z-index: 200;
   display: flex;
   align-items: center;
@@ -801,10 +840,7 @@ a { color: inherit; text-decoration: none; }
   opacity: 0;
   transition: opacity 0.2s;
 }
-
-.confirm-overlay.visible {
-  opacity: 1;
-}
+.confirm-overlay.visible { opacity: 1; }
 
 .confirm-dialog {
   background: var(--bg2);
@@ -816,19 +852,19 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   flex-direction: column;
   gap: 20px;
+  transform: scale(0.95);
+  transition: transform 0.2s;
 }
+.confirm-overlay.visible .confirm-dialog { transform: scale(1); }
 
 .confirm-msg {
   font-size: 15px;
   color: var(--text);
   text-align: center;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
-.confirm-btns {
-  display: flex;
-  gap: 10px;
-}
+.confirm-btns { display: flex; gap: 10px; }
 
 .confirm-cancel, .confirm-ok {
   flex: 1;
@@ -840,21 +876,7 @@ a { color: inherit; text-decoration: none; }
   cursor: pointer;
   transition: background 0.2s;
 }
-
-.confirm-cancel {
-  background: var(--bg4);
-  color: var(--text2);
-}
-
-.confirm-cancel:hover {
-  background: var(--border);
-}
-
-.confirm-ok {
-  background: var(--danger);
-  color: #fff;
-}
-
-.confirm-ok:hover {
-  background: #ff5c8a;
-}
+.confirm-cancel { background: var(--bg4); color: var(--text2); }
+.confirm-cancel:hover { background: var(--border); }
+.confirm-ok { background: var(--danger); color: #fff; }
+.confirm-ok:hover { background: #ff5c8a; }
