@@ -2,10 +2,10 @@
 import { fetchPage, parseMp3 } from './parser.js';
 import { Offline } from './storage.js';
 
-const PROXIES = [
-  'https://functions.yandexcloud.net/d4ebfvpcafvdghfva6fs?url=',
-  'https://silent-boat-5c96.chatgptnik.workers.dev/?url=',
-];
+// Только Cloudflare Worker — он теперь поддерживает sunproxy.net + бинарные ответы.
+// Yandex Function оставляем как fallback для HTML-страниц, но не для MP3
+// (она не умеет проксировать бинарники корректно).
+const CF_WORKER = 'https://silent-boat-5c96.chatgptnik.workers.dev/?url=';
 
 const active = new Map();
 
@@ -29,19 +29,15 @@ export const Download = {
         track.mp3Url = mp3Url;
       }
 
-      // Логируем домен для диагностики
-      try {
-        const mp3Host = new URL(mp3Url).hostname;
-        console.log('[download] MP3 hostname:', mp3Host);
-      } catch {}
+      console.log('[download] MP3 URL:', mp3Url);
 
-      // Шаг 2: качаем бинарник
+      // Шаг 2: качаем через Cloudflare Worker (поддерживает CORS + бинарники)
       onProgress?.({ phase: 'downloading', percent: 0 });
-      const blob = await fetchBlobSafari(mp3Url, ctrl.signal, pct => {
+      const blob = await fetchBlobViaWorker(mp3Url, ctrl.signal, pct => {
         onProgress?.({ phase: 'downloading', percent: pct });
       });
 
-      // Шаг 3: сохраняем
+      // Шаг 3: сохраняем в IndexedDB
       onProgress?.({ phase: 'saving', percent: 100 });
       await Offline.save(track, blob);
 
@@ -60,49 +56,18 @@ export const Download = {
   },
 };
 
-// ── Умный fetch: прямой → прокси fallback ─────────────────────
-// Сначала пробуем прямой fetch (работает в Яндекс, Chrome).
-// Если CORS-ошибка (Safari/iOS) — идём через прокси.
-async function fetchBlobSafari(mp3Url, signal, onPercent) {
-  // Попытка 1: прямой fetch
-  try {
-    const blob = await fetchBlobDirect(mp3Url, signal, onPercent);
-    console.log('[download] direct fetch OK');
-    return blob;
-  } catch (e) {
-    if (e.name === 'AbortError') throw e;
-    console.warn('[download] direct fetch failed, trying proxies:', e.message);
-  }
+// ── Fetch через Cloudflare Worker с прогрессом ────────────────
+async function fetchBlobViaWorker(mp3Url, signal, onPercent) {
+  const proxyUrl = CF_WORKER + encodeURIComponent(mp3Url);
+  const res = await fetch(proxyUrl, { signal });
 
-  // Попытка 2: через каждый прокси
-  let lastError;
-  for (const proxy of PROXIES) {
-    try {
-      const proxyUrl = proxy + encodeURIComponent(mp3Url);
-      console.log('[download] trying proxy:', proxy);
-      const blob = await fetchBlobDirect(proxyUrl, signal, onPercent);
-      console.log('[download] proxy OK:', proxy);
-      return blob;
-    } catch (e) {
-      if (e.name === 'AbortError') throw e;
-      lastError = e;
-      console.warn('[download] proxy failed:', e.message);
-    }
-  }
+  if (!res.ok) throw new Error('Worker вернул HTTP ' + res.status);
 
-  throw new Error('Не удалось скачать трек. ' + (lastError?.message || ''));
-}
-
-// ── Базовый fetch с прогрессом ─────────────────────────────────
-async function fetchBlobDirect(url, signal, onPercent) {
-  const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-
-  // Прокси может вернуть JSON-ошибку
+  // Проверяем что получили аудио, а не JSON-ошибку
   const ct = res.headers.get('Content-Type') || '';
   if (ct.includes('application/json')) {
     const txt = await res.text();
-    throw new Error('Proxy error: ' + txt.slice(0, 100));
+    throw new Error('Worker error: ' + txt.slice(0, 120));
   }
 
   const contentLength = res.headers.get('Content-Length');
