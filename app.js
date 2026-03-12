@@ -17,6 +17,22 @@ import {
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // ── VPN Banner ───────────────────────────────────────────────
+  const _banner = document.getElementById('vpnBanner');
+  const _closeBtn = document.getElementById('vpnBannerClose');
+  if (_banner && _closeBtn) {
+    if (sessionStorage.getItem('vpn_banner_dismissed')) {
+      _banner.classList.add('hidden');
+    } else {
+      document.body.classList.add('vpn-banner-visible');
+    }
+    _closeBtn.addEventListener('click', () => {
+      _banner.classList.add('hidden');
+      document.body.classList.remove('vpn-banner-visible');
+      sessionStorage.setItem('vpn_banner_dismissed', '1');
+    });
+  }
+
   // Инициализация авторизации
   await Auth.init();
   updateAuthUI();
