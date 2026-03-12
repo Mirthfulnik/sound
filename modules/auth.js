@@ -2,8 +2,8 @@
 // Telegram Login Widget + JWT хранение.
 // AUTH_URL — URL вашей Yandex Function tg-auth (без /auth на конце)
 
-const AUTH_URL   = 'https://functions.yandexcloud.net/REPLACE_WITH_YOUR_AUTH_FUNCTION_ID';
-const BOT_NAME   = 'REPLACE_WITH_YOUR_BOT_USERNAME'; // без @, например: skysound_bot
+const AUTH_URL   = 'https://functions.yandexcloud.net/d4ebehbkbja32u0et4rl';
+const BOT_NAME   = 'sound_auth_bot';
 const TOKEN_KEY  = 'ss_jwt';
 const USER_KEY   = 'ss_user';
 
