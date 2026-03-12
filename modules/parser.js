@@ -1,7 +1,9 @@
 // ── parser.js ─────────────────────────────────────────────────
-// All network requests go through Cloudflare Worker proxy.
+// HTML страницы skysound7 загружаем через оба прокси.
+// Yandex Function стабильна в РФ, CF Worker — fallback.
 
 const PROXIES = [
+  'https://functions.yandexcloud.net/d4ebfvpcafvdghfva6fs?url=',
   'https://silent-boat-5c96.chatgptnik.workers.dev/?url=',
 ];
 const BASE = 'https://skysound7.com';
