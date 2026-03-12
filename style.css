@@ -20,20 +20,13 @@
 /* ── Reset ─────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html {
+html, body {
   height: 100%;
-  height: -webkit-fill-available;
   overflow: hidden;
   -webkit-text-size-adjust: 100%;
-}
-
-body {
-  height: 100%;
-  height: -webkit-fill-available;
   background: var(--bg);
   color: var(--text);
   font-family: 'Syne', sans-serif;
-  overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -45,11 +38,14 @@ a { color: inherit; text-decoration: none; }
 .app-shell {
   display: flex;
   flex-direction: column;
+  /* safe-area учитываем через padding, высота = весь экран */
   height: 100dvh;
+  height: 100svh; /* iOS Safari 15.4+ точнее считает */
   padding-top: env(safe-area-inset-top, 0px);
-  height: -webkit-fill-available; /* PWA iOS Safari fix */
-  max-height: 100dvh;
   overflow: hidden;
+  position: fixed;
+  inset: 0;
+  /* Нижний отступ для home indicator учитывается в bottom-nav */
 }
 
 /* ── Screens ───────────────────────────────────────────────── */
@@ -574,15 +570,22 @@ a { color: inherit; text-decoration: none; }
 
 /* ── BOTTOM NAV ────────────────────────────────────────────── */
 .bottom-nav {
+  /* Высота nav + home indicator зона */
   height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
   background: var(--bg2);
   border-top: 1px solid var(--border);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-around;
-  padding: 0 8px;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: grid;
+  /* Кнопки занимают только --nav-h, остаток — home indicator */
+  grid-template-rows: var(--nav-h) env(safe-area-inset-bottom, 0px);
+  align-items: start;
+  grid-auto-flow: column;
   flex-shrink: 0;
+  position: relative;
+}
+
+/* Все nav-item выровнены в первой строке grid */
+.bottom-nav > * {
+  grid-row: 1;
 }
 
 .nav-item {
@@ -592,10 +595,12 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 8px 20px;
+  padding: 8px 4px;
   border-radius: var(--radius);
   transition: all 0.15s;
+  min-width: 0;
   flex: 1;
 }
 .nav-item span {
@@ -610,7 +615,7 @@ a { color: inherit; text-decoration: none; }
 /* ── TOAST ─────────────────────────────────────────────────── */
 .toast {
   position: fixed;
-  bottom: calc(var(--player-h) + var(--nav-h) + 12px);
+  bottom: calc(var(--player-h) + var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px);
   left: 50%;
   transform: translateX(-50%) translateY(10px);
   background: var(--bg4);
@@ -917,44 +922,59 @@ a { color: inherit; text-decoration: none; }
 
 /* ── Auth button in nav ───────────────────────────────────────── */
 .auth-nav-item {
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   color: var(--text3);
-  gap: 4px;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 80px;
-  padding: 8px 6px;
-}
-
-/* На мобилке в auth кнопке — только фото/иконка */
-@media (max-width: 599px) {
-  .auth-nav-item .auth-name {
-    display: none;
-  }
-  .auth-nav-item {
-    max-width: 48px;
-    padding: 8px 4px;
-  }
-  .auth-avatar {
-    width: 24px;
-    height: 24px;
-  }
+  padding: 8px 4px;
+  min-width: 0;
+  flex: 1;
 }
 
 .auth-nav-item.logged-in {
   color: var(--accent);
 }
 
-.auth-avatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  vertical-align: middle;
-  margin-right: 2px;
+/* Имя — скрыто на мобилке */
+.auth-name {
+  display: none;
 }
 
+/* Аватар — основной элемент на мобилке */
+.auth-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: block;
+  margin: 0 auto;
+  border: 2px solid var(--accent);
+  object-fit: cover;
+}
+
+/* Иконка замка/эмодзи когда не залогинен */
+.auth-nav-item:not(.logged-in) {
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* На десктопе — показываем имя */
 @media (min-width: 680px) {
+  .auth-name {
+    display: block;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+  }
+  .auth-avatar {
+    width: 22px;
+    height: 22px;
+  }
+  .auth-nav-item:not(.logged-in) {
+    font-size: 18px;
+  }
   .auth-nav-item {
     max-width: 100%;
     font-size: 13px;
