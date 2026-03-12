@@ -178,17 +178,56 @@ function initFavoritesScreen() {
   refreshFavorites();
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (btn.dataset.view === 'favorites') refreshFavorites();
+      if (btn.dataset.view === 'favorites') {
+        refreshFavorites();
+        // Сбросить поиск при переходе на экран
+        const inp = document.getElementById('favSearchInput');
+        if (inp) inp.value = '';
+      }
     });
   });
+
+  // Поиск по избранному
+  const favSearch = document.getElementById('favSearchInput');
+  if (favSearch) {
+    favSearch.addEventListener('input', () => {
+      const q = favSearch.value.trim().toLowerCase();
+      const tracks = Liked.getAll();
+      const filtered = q
+        ? tracks.filter(t =>
+            (t.title  || '').toLowerCase().includes(q) ||
+            (t.artist || '').toLowerCase().includes(q)
+          )
+        : tracks;
+      renderFavoritesList(filtered);
+    });
+  }
 }
 
 function refreshFavorites() {
+  // Сбросить фильтр при обновлении
+  const inp = document.getElementById('favSearchInput');
+  const q   = inp ? inp.value.trim().toLowerCase() : '';
+  const all = Liked.getAll();
+  const tracks = q
+    ? all.filter(t =>
+        (t.title  || '').toLowerCase().includes(q) ||
+        (t.artist || '').toLowerCase().includes(q)
+      )
+    : all;
+  renderFavoritesList(tracks, all.length);
+}
+
+function renderFavoritesList(tracks, totalCount) {
   const container = document.getElementById('favoritesContainer');
-  const tracks    = Liked.getAll();
+  const count     = totalCount ?? tracks.length;
+
+  const favCount = document.getElementById('favCount');
+  if (favCount) favCount.textContent = count ? count + ' треков' : '';
 
   if (!tracks.length) {
-    container.innerHTML = emptyHTML('Здесь появятся треки, которые вы лайкнули ♡');
+    const q = document.getElementById('favSearchInput')?.value.trim();
+    container.innerHTML = emptyHTML(q ? 'Ничего не найдено' : 'Здесь появятся треки, которые вы лайкнули ♡');
     return;
   }
 
@@ -196,6 +235,7 @@ function refreshFavorites() {
     ...makeTrackHandlers(tracks),
     onLikeToggle: (track, btn) => {
       Liked.remove(track.url);
+      Sync.pushLiked(Liked.getAll());
       const row = btn.closest('.track-item');
       row.style.transition = 'opacity 0.3s, transform 0.3s';
       row.style.opacity    = '0';
@@ -281,8 +321,9 @@ function updateAuthUI() {
   if (!authBtn) return;
   if (user) {
     authBtn.innerHTML = (user.photo
-      ? `<img src="${user.photo}" class="auth-avatar"> `
-      : '👤 ') + (user.name || user.username);
+      ? `<img src="${user.photo}" class="auth-avatar">`
+      : '👤')
+      + `<span class="auth-name"> ${user.name || user.username}</span>`;
     authBtn.classList.add('logged-in');
     authBtn.onclick = () => { if (confirm('Выйти из аккаунта?')) Auth.logout(); };
   } else {
