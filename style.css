@@ -44,7 +44,7 @@ body {
 }
 
 button { cursor: pointer; font-family: inherit; }
-input, select, textarea { font-family: inherit; }
+input, select, textarea { font-family: inherit; font-size: 16px; } /* 16px — iOS не зумит при фокусе */
 a { color: inherit; text-decoration: none; }
 
 /* ── App Shell ─────────────────────────────────────────────── */
