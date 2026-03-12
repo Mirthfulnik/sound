@@ -354,25 +354,52 @@ function updateAuthUI() {
 // ── Двусторонняя синхронизация лайков ────────────────────────
 // Мержим локальные → KV и KV → локальные
 async function syncBothWays() {
+  if (!Auth.isLoggedIn()) return;
   try {
     const remote = await Sync.pull();
-    const local  = Liked.getAll();
+    if (!remote) return; // pull упал — не трогаем ничего
 
-    // KV → локально (добавляем треки которых нет локально)
+    const local       = Liked.getAll();
+    const remoteCount = remote.liked?.length ?? 0;
+    const localCount  = local.length;
+
+    console.log(`[sync] local=${localCount} remote=${remoteCount}`);
+
+    if (remoteCount === 0 && localCount === 0) {
+      // Оба пустые — ничего не делаем
+      return;
+    }
+
+    if (remoteCount === 0 && localCount > 0) {
+      // KV пустой, локально есть — пушим локальное в KV
+      console.log('[sync] KV empty, pushing local tracks');
+      Sync.pushLiked(local);
+      return;
+    }
+
+    if (localCount === 0 && remoteCount > 0) {
+      // Локально пусто, KV есть — тянем из KV
+      console.log('[sync] local empty, pulling from KV');
+      remote.liked.forEach(t => Liked.add(t));
+      refreshFavorites();
+      return;
+    }
+
+    // Оба непустые — объединяем (добавляем то чего нет локально)
+    // Удаления не мержим — побеждает последняя запись при лайке/анлайке
     let changed = false;
-    if (remote?.liked?.length) {
-      remote.liked.forEach(t => {
-        if (!Liked.isLiked(t.url)) { Liked.add(t); changed = true; }
-      });
+    remote.liked.forEach(t => {
+      if (!Liked.isLiked(t.url)) { Liked.add(t); changed = true; }
+    });
+    if (changed) {
+      refreshFavorites();
+      // Пушим мёрж обратно в KV
+      Sync.pushLiked(Liked.getAll());
+      console.log('[sync] merged, pushed', Liked.getAll().length, 'tracks');
+    } else {
+      console.log('[sync] already in sync');
     }
-    if (changed) refreshFavorites();
 
-    // Локально → KV (пушим мёрж если локальных больше чем в KV)
-    const merged = Liked.getAll();
-    const remoteCount = remote?.liked?.length || 0;
-    if (merged.length > remoteCount) {
-      Sync.pushLiked(merged);
-    }
   } catch (e) {
     console.warn('[sync] syncBothWays failed:', e.message);
   }
