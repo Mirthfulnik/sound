@@ -5,7 +5,7 @@
 import { Auth } from './auth.js';
 
 // URL функции синхронизации (замените после деплоя)
-const SYNC_URL = 'https://functions.yandexcloud.net/REPLACE_WITH_STORAGE_FUNCTION_ID';
+const SYNC_URL = 'https://functions.yandexcloud.net/d4emspspkvev79vk18t4';
 
 // Задержка перед отправкой (debounce) — чтобы не слать запрос на каждый лайк
 const DEBOUNCE_MS = 2000;
