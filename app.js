@@ -322,13 +322,13 @@ function updateAuthUI() {
   if (user) {
     authBtn.innerHTML = (user.photo
       ? `<img src="${user.photo}" class="auth-avatar">`
-      : `<span style="font-size:28px;line-height:1">👤</span>`)
+      : `<svg class="auth-icon" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`)
       + `<span class="auth-name">${user.name || user.username}</span>`;
     authBtn.classList.add('logged-in');
     authBtn.title = user.name || user.username;
     authBtn.onclick = () => { if (confirm('Выйти из аккаунта?')) Auth.logout(); };
   } else {
-    authBtn.innerHTML = `<span>🔐</span><span class="auth-name">Войти</span>`;
+    authBtn.innerHTML = `<svg class="auth-icon" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="auth-name">Войти</span>`;
     authBtn.classList.remove('logged-in');
     authBtn.title = 'Войти через Telegram';
     authBtn.onclick = showTelegramAuth;
