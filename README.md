@@ -1,6 +1,6 @@
-# 🎵 SkySound Player
+# 🎵 Sky Player
 
-Адаптивный PWA музыкальный плеер для [skysound7.com](https://skysound7.com).  
+Адаптивный PWA музыкальный плеер.  
 Работает в браузере и устанавливается на смартфон как приложение.
 
 ## Возможности
@@ -54,7 +54,7 @@ npx serve .
 ├── app.js              # Точка входа, логика экранов
 ├── manifest.json       # PWA манифест
 ├── modules/
-│   ├── parser.js       # Парсинг skysound7 через Cloudflare Worker
+│   ├── parser.js       # Парсинг через Cloudflare Worker
 │   ├── player.js       # Аудио движок и очередь
 │   ├── storage.js      # LocalStorage (лайки, плейлисты, история)
 │   ├── wave.js         # Логика "Моя волна"
