@@ -11,16 +11,20 @@
 import { parseMp3, fetchPage } from './parser.js';
 import { History, Offline } from './storage.js';
 
-// CF Worker proxy — используем для MP3 чтобы Safari мог воспроизвести
-// без VPN (sunproxy.net заблокирован в РФ без VPN)
-const CF_PROXY = 'https://silent-boat-5c96.chatgptnik.workers.dev/?url=';
+// Прокси для MP3:
+// - Yandex Function успешно проксирует sunproxy.net
+// - CF Workers получает 451 от sunproxy (блокировка по IP)
+// Порядок: сначала Yandex, fallback CF
+const MP3_PROXIES = [
+  'https://functions.yandexcloud.net/d4ebfvpcafvdghfva6fs?url=',
+  'https://silent-boat-5c96.chatgptnik.workers.dev/?url=',
+];
 
 function proxyMp3(url) {
   if (!url) return url;
-  // Если URL уже через прокси или это blob — не трогаем
-  if (url.startsWith('blob:') || url.includes('chatgptnik.workers.dev')) return url;
-  // Проксируем sunproxy и другие CDN через CF Worker
-  return CF_PROXY + encodeURIComponent(url);
+  if (url.startsWith('blob:')) return url;
+  // Используем первый прокси (Yandex) для MP3
+  return MP3_PROXIES[0] + encodeURIComponent(url);
 }
 
 const audio = new Audio();
@@ -72,6 +76,20 @@ export const Player = {
       History.add(track.url);
       emit('player:state-changed', { playing: true });
     } catch (e) {
+      // Если первый прокси не сработал — пробуем следующий
+      if (track.mp3Url && MP3_PROXIES.length > 1) {
+        for (let i = 1; i < MP3_PROXIES.length; i++) {
+          try {
+            audio.src = MP3_PROXIES[i] + encodeURIComponent(track.mp3Url);
+            audio.load();
+            await audio.play();
+            emit('player:state-changed', { playing: true });
+            return;
+          } catch (e2) {
+            console.warn('[player] fallback proxy', i, 'failed:', e2.message);
+          }
+        }
+      }
       emit('player:error', { message: e.message });
     } finally {
       loading = false;
